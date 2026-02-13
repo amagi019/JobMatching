@@ -1,65 +1,167 @@
-import Image from "next/image";
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { Header } from '@/components/Header';
+import { AchievementForm } from '@/modules/achievement/presentation/components/AchievementForm';
+import { AchievementList } from '@/modules/achievement/presentation/components/AchievementList';
+import { Briefcase, Trophy, Shield, Zap } from 'lucide-react';
 
 export default function Home() {
+  const { data: session, status } = useSession();
+  const [achievements, setAchievements] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchAchievements = async () => {
+    if (!session) return;
+    try {
+      const res = await fetch('/api/achievements');
+      const data = await res.json();
+      setAchievements(data);
+    } catch (error) {
+      console.error('Failed to fetch achievements:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetchAchievements();
+    } else {
+      setIsLoading(false);
+    }
+  }, [status]);
+
+  const handleVerify = async (id: string) => {
+    const achievement = achievements.find((a: any) => a.id === id);
+    if (!achievement) return;
+
+    const action = achievement.status === 'Draft' ? 'apply' : 'mint';
+
+    try {
+      const res = await fetch('/api/achievements', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action }),
+      });
+      if (res.ok) {
+        fetchAchievements();
+      }
+    } catch (error) {
+      console.error('Action failed:', error);
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+    <div className="min-h-screen bg-white flex flex-col antialiased">
+      <Header />
+
+      <main className="flex-grow container mx-auto px-4 py-8">
+        {!session ? (
+          <div className="max-w-4xl mx-auto text-center py-16 space-y-8">
+            <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight">
+              あなたのスキルを<br />
+              <span className="text-indigo-900 font-black">オンチェーンで証明</span>しよう
+            </h1>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              L1/L2 ネットワークを選択して、仕事の実績やスキルをNFTとして発行。
+              信頼性の高いジョブマッチングを、Web3の技術で。
+            </p>
+
+            <div className="grid md:grid-cols-3 gap-8 mt-16">
+              <FeatureCard
+                icon={<Shield className="w-8 h-8 text-indigo-500" />}
+                title="改ざん不可能な実績"
+                description="ブロックチェーンに実績を刻むことで、経歴詐称のない透明なキャリアを構築。"
+              />
+              <FeatureCard
+                icon={<Zap className="w-8 h-8 text-purple-500" />}
+                title="マルチチェーン対応"
+                description="Ethereum (L1) だけでなく、Base や Polygon (L2) で安価に証明を発行可能。"
+              />
+              <FeatureCard
+                icon={<Briefcase className="w-8 h-8 text-blue-500" />}
+                title="直接マッチング"
+                description="企業とワーカーが直接つながることで、不透明な手数料を排除し利益を最大化。"
+                className="text-black"
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="max-w-5xl mx-auto grid lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-1 space-y-6">
+              <div className="bg-white p-6 rounded-xl border shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 border">
+                    <img
+                      src={`https://avatar.vercel.sh/${session.user?.name}`}
+                      alt="avatar"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">マイプロフィール</p>
+                    <p className="font-bold truncate w-40">
+                      {session.user?.name?.slice(0, 6)}...{session.user?.name?.slice(-4)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center text-sm border-t pt-4">
+                  <span className="text-gray-500">証明済み実績</span>
+                  <span className="font-bold text-indigo-600">
+                    {achievements.filter((a: any) => a.status === 'Verified').length}件
+                  </span>
+                </div>
+              </div>
+
+              <AchievementForm onCreated={fetchAchievements} />
+            </div>
+
+            <div className="lg:col-span-2 space-y-6">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  <Trophy className="w-6 h-6 text-yellow-500" />
+                  あなたの実績
+                </h2>
+                <button
+                  onClick={fetchAchievements}
+                  className="text-sm text-indigo-600 hover:underline"
+                >
+                  更新
+                </button>
+              </div>
+
+              {isLoading ? (
+                <div className="flex justify-center py-20">
+                  <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              ) : (
+                <AchievementList
+                  achievements={achievements}
+                  onVerify={handleVerify}
+                />
+              )}
+            </div>
+          </div>
+        )}
       </main>
+
+      <footer className="bg-white border-t py-8">
+        <div className="container mx-auto px-4 text-center text-gray-500 text-sm">
+          &copy; 2026 JobMatching Web3. Built with Next.js, RainbowKit & Supabase.
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+function FeatureCard({ icon, title, description, className }: { icon: React.ReactNode, title: string, description: string, className?: string }) {
+  return (
+    <div className={`bg-white p-6 rounded-2xl border shadow-sm hover:shadow-md transition-shadow text-left ${className || ''}`}>
+      <div className="mb-4">{icon}</div>
+      <h3 className="text-lg font-bold mb-2">{title}</h3>
+      <p className="text-gray-600 text-sm leading-relaxed">{description}</p>
     </div>
   );
 }
